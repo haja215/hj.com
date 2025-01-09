@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Téléchargeur YouTube</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f4f7fa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      color: #333;
+    }
+
+    h1 {
+      color: #4caf50;
+      font-size: 2.5rem;
+      margin-bottom: 30px;
+      text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    #formats,
+    #progress {
+      display: none;
+    }
+
+    #formats {
+      margin-top: 20px;
+      width: 100%;
+      max-width: 700px;
+      text-align: center;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      margin-bottom: 20px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease-in-out;
+    }
+
+    li:hover {
+      background-color: #007bff;
+      color: white;
+      transform: scale(1.05);
+    }
+
+    button {
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+      transform: scale(1.05);
+    }
+
+    input[type="text"] {
+      padding: 12px 20px;
+      margin-bottom: 30px;
+      border-radius: 5px;
+      border: 2px solid #ccc;
+      width: 100%;
+      max-width: 700px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.3s ease;
+    }
+
+    input[type="text"]:focus {
+      border-color: #007bff;
+    }
+
+    .progress-bar {
+      width: 100%;
+      max-width: 700px;
+      background: #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 20px;
+    }
+
+    .progress-bar-fill {
+      height: 20px;
+      background: #4caf50;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    #progressText {
+      font-size: 1.2rem;
+      text-align: center;
+      margin-top: 10px;
+      font-weight: 600;
+    }
+
+    .file-format {
+      font-size: 0.9rem;
+      color: #555;
+      font-weight: 400;
+    }
+
+    /* Global progress bar (visible during download) */
+    #globalProgress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 5px;
+      background-color: #007bff;
+      transition: width 0.5s ease;
+      z-index: 1000;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Global Progress Bar -->
+  <div id="globalProgress"></div>
+
+  <h1>Téléchargeur YouTube</h1>
+  <form id="videoForm">
+    <input type="text" id="url" placeholder="URL de la vidéo" required>
+    <button type="submit">Afficher les formats</button>
+  </form>
+
+  <div id="formats">
+    <h2>Formats disponibles</h2>
+    <ul id="formatList"></ul>
+  </div>
+
+  <div id="progress">
+    <div class="progress-bar">
+      <div class="progress-bar-fill"></div>
+    </div>
+    <p id="progressText">Dossier nw fw mila zahagna : 0%</p>
+  </div>
+
+  <script>
+    const form = document.getElementById('videoForm');
+    const formatList = document.getElementById('formatList');
+    const progress = document.getElementById('progress');
+    const progressBarFill = document.querySelector('.progress-bar-fill');
+    const progressText = document.getElementById('progressText');
+    const globalProgress = document.getElementById('globalProgress');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const url = document.getElementById('url').value;
+      formatList.innerHTML = '';
+      document.getElementById('formats').style.display = 'none';
+
+      const response = await fetch(`/formats?url=${encodeURIComponent(url)}`);
+      const data = await response.json();
+
+      if (data.formats) {
+        document.getElementById('formats').style.display = 'block';
+        data.formats.forEach((format) => {
+          const li = document.createElement('li');
+          li.innerHTML = `${format.resolution} (${format.ext}) <span class="file-format">Type: ${format.ext.toUpperCase()}</span>`;
+          const downloadBtn = document.createElement('button');
+          downloadBtn.textContent = 'Télécharger';
+          downloadBtn.onclick = () => downloadFile(url, format.format_id, 'video', format.size);
+          li.appendChild(downloadBtn);
+          formatList.appendChild(li);
+        });
+      }
+    });
+
+    async function downloadFile(url, format, type, size) {
+      progress.style.display = 'block';
+      globalProgress.style.width = '0%';
+      const endpoint = type === 'audio' ? '/download/audio' : '/download';
+      const downloadUrl = `${endpoint}?url=${encodeURIComponent(url)}&format=${format}`;
+
+      // Update the global progress bar for the download
+      const interval = setInterval(() => {
+        const randomProgress = Math.floor(Math.random() * 5) + 5;
+        progressBarFill.style.width = `${Math.min(parseInt(progressBarFill.style.width) + randomProgress, 100)}%`;
+        progressText.textContent = `Progression : ${progressBarFill.style.width}`;
+        globalProgress.style.width = `${Math.min(parseInt(globalProgress.style.width) + randomProgress, 100)}%`;
+
+        if (progressBarFill.style.width === '100%') {
+          clearInterval(interval);
+        }
+      }, 500);
+
+      window.location.href = downloadUrl;
+    }
+  </script>
+</body>
+
+</html>
